@@ -54,30 +54,31 @@ def get_current_user(request: Request, response: Response):
     access_token = request.cookies.get("access_token")
     refresh_token = request.cookies.get("refresh_token")
     print(access_token, "access_token")
-
+    if not refresh_token or not access_token:
+        raise HTTPException(status_code=401, detail="Missing access or refresh token")
     try:
         payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         return {"user_id": payload.get("sub")}
 
-    except jwt.ExpiredSignatureError:
-        # Try refresh token
-        try:
-            payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-            user_id = payload.get("sub")
+    # except jwt.ExpiredSignatureError:
+    #     # Try refresh token
+    #     try:
+    #         payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    #         user_id = payload.get("sub")
 
-            # Re-issue tokens
-            new_access = create_access_token({"sub": user_id})
-            new_refresh = create_refresh_token({"sub": user_id})
+    #         # Re-issue tokens
+    #         new_access = create_access_token({"sub": user_id})
+    #         new_refresh = create_refresh_token({"sub": user_id})
 
-            response.set_cookie("access_token", new_access, httponly=True, max_age=1800, secure=True, samesite="lax")
-            response.set_cookie("refresh_token", new_refresh, httponly=True, max_age=86400, secure=True, samesite="lax")
+    #         response.set_cookie("access_token", new_access, httponly=True, max_age=1800, secure=True, samesite="lax")
+    #         response.set_cookie("refresh_token", new_refresh, httponly=True, max_age=86400, secure=True, samesite="lax")
 
-            return {"user_id": user_id}
+    #         return {"user_id": user_id}
 
-        except jwt.ExpiredSignatureError:
-            raise HTTPException(status_code=401, detail="Refresh token expired")
-        except jwt.JWTError:
-            raise HTTPException(status_code=401, detail="Invalid refresh token")
+    #     except jwt.ExpiredSignatureError:
+    #         raise HTTPException(status_code=401, detail="Refresh token expired")
+    #     except jwt.JWTError:
+    #         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Invalid access token")

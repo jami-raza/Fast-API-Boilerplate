@@ -104,12 +104,12 @@ def refresh_tokens(db: Session, user_id: str):
 
     # Update the device's refresh token and expiration
     device = db.query(Device).filter(Device.user_id == user_id).first()
-    if device:
+    if device and device.revoked != True:
         device.token = refresh_token
         device.expires_at = get_refresh_token_expiration()
         db.commit()
 
-    return access_token, refresh_token
+    return {"access_token":access_token, "refresh_token":refresh_token}
 
 # Revoke a device's refresh token
 def revoke_device(db: Session, user_id: str):
