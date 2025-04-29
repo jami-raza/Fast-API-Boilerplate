@@ -36,3 +36,5 @@ aiosmtplib==2.0.2
 pydantic[email]
 
 requests
+fastapi_mail
+google-auth

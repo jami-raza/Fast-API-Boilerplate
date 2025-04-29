@@ -3,6 +3,8 @@ from app.api.v1 import auth  # Import the auth routes
 from app.db.base import Base  # Base class for SQLAlchemy models
 from app.db.session import engine  # DB engine to bind models
 from fastapi.openapi.utils import get_openapi
+from fastapi.middleware.cors import CORSMiddleware
+
 
 Base.metadata.create_all(bind=engine)  # Create tables if not exist
 
@@ -10,6 +12,19 @@ app = FastAPI()  # Initialize FastAPI app
 
 # Register routes from auth module
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
+
+origins = [
+    "http://localhost:3000",  # your Next.js dev server
+    
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,              # must not use ["*"] with credentials
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Custom OpenAPI schema for Swagger UI
 def custom_openapi():

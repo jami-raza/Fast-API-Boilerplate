@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response, Request, HTTPException, Header
+from fastapi import APIRouter, Depends, Response, Request, HTTPException, Header, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.schemas.user import *
 from app.services import auth
@@ -9,12 +9,52 @@ from app.models.device import Device
 from app.core.security import get_current_user 
 from typing import Annotated
 from jose import jwt, JWTError
+from app.utils.email import send_forgot_password_email
 
 router = APIRouter()
 
 @router.post("/signup", response_model=UserOut)
-def signup(user: UserCreate, db: Session = Depends(get_db)):
-    return auth.register_user(db, user)
+def signup( background_tasks: BackgroundTasks, user: UserCreate, db: Session = Depends(get_db)):
+   
+    
+    return auth.register_user(db, user, background_tasks)
+
+@router.post("/google-signup", response_model=UserLoginGoogleResponse)
+def google_signup( background_tasks: BackgroundTasks, user: UserLoginGoogleRequest, response: Response, request: Request, db: Session = Depends(get_db),
+    device_id: str = Header(None, alias="Device-ID"),
+    mac_address: str = Header(None, alias="MAC-Address"),
+    location: str = Header(None, alias="Location"),
+                  ):
+   
+    
+          
+    # Assume `user_data` has been validated and contains email, password
+    user = auth.google_signup(db, user, background_tasks)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid Google Login")
+
+    # Generate access and refresh tokens
+    access_token = auth.create_access_token({"sub": user.id})
+    refresh_token = auth.create_refresh_token({"sub": user.id})
+
+    # Get device details (these would be in the request headers or custom headers)
+    device_info = {
+        "device_name": request.headers.get("User-Agent"),
+        "device_id": device_id,
+        "mac_address": mac_address,
+        "ip_address": request.client.host,
+        "location": location,
+    }
+
+    # Create or update device record
+    device.create_or_update_device(db, user.id, device_info, refresh_token)
+
+    # Set tokens in cookies
+    response.set_cookie("access_token", access_token, httponly=True, max_age=1800, secure=True, samesite="lax")
+    response.set_cookie("refresh_token", refresh_token, httponly=True, max_age=86400, secure=True, samesite="lax")
+
+    return {"message": "Login successful", "user_id": user.id}
+    
 
 @router.post("/login", response_model=Token)
 def login(user_data: UserLogin, response: Response, request: Request, db: Session = Depends(get_db),
@@ -50,14 +90,20 @@ def login(user_data: UserLogin, response: Response, request: Request, db: Sessio
     return {"message": "Login successful", "user_id": user.id}
 
 @router.post("/forgot-password")
-def forgot(data: PasswordResetRequest, db: Session = Depends(get_db)):
-    token = auth.generate_reset_token(db, data.email)
+def forgot(background_tasks: BackgroundTasks, data: PasswordResetRequest, db: Session = Depends(get_db)):
+    token = auth.generate_reset_token_code(db, data.email, background_tasks)
+  
     print(f"Reset link: https://yourapp.com/reset-password?token={token}")
     return {"message": "Reset link sent"}
 
+@router.post("/verify-code")
+def verify(data: PasswordVerifyConfirm, db: Session = Depends(get_db)):
+    auth.verify_code(db, data.token, data.email)
+    return {"message": "Code verified successfully"}
+
 @router.post("/reset-password")
 def reset(data: PasswordResetConfirm, db: Session = Depends(get_db)):
-    auth.reset_password(db, data.token, data.new_password)
+    auth.reset_password(db,data.email, data.token, data.new_password)
     return {"message": "Password updated successfully"}
 
 @router.get("/profile")
