@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"  # Algorithm used for encoding JWT
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15 # Token lifetime
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7 # Refresh Token lifetime
-    EMAIL_FROM: EmailStr = "support@my.wealthbudgetplanner.com"  # Default from email
+    EMAIL_FROM: EmailStr 
     SMTP_SERVER: str   # Outgoing email server
     SMTP_PORT: int = 465
     SMTP_USER: str 

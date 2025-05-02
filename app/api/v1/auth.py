@@ -10,6 +10,7 @@ from app.core.security import get_current_user
 from typing import Annotated
 from jose import jwt, JWTError
 from app.utils.email import send_forgot_password_email
+from app.utils.enums import OTPEnum
 
 router = APIRouter()
 
@@ -17,7 +18,10 @@ router = APIRouter()
 def signup( background_tasks: BackgroundTasks, user: UserCreate, db: Session = Depends(get_db)):
    
     
-    return auth.register_user(db, user, background_tasks)
+    user = auth.register_user(db, user, background_tasks)
+    
+    return user
+    
 
 @router.post("/google-signup", response_model=UserLoginGoogleResponse)
 def google_signup( background_tasks: BackgroundTasks, user: UserLoginGoogleRequest, response: Response, request: Request, db: Session = Depends(get_db),
@@ -57,15 +61,17 @@ def google_signup( background_tasks: BackgroundTasks, user: UserLoginGoogleReque
     
 
 @router.post("/login", response_model=Token)
-def login(user_data: UserLogin, response: Response, request: Request, db: Session = Depends(get_db),
+def login(background_tasks: BackgroundTasks, user_data: UserLogin, response: Response, request: Request, db: Session = Depends(get_db),
           device_id: str = Header(None, alias="Device-ID"),
         mac_address: str = Header(None, alias="MAC-Address"),
     location: str = Header(None, alias="Location"),
           ):
     # Assume `user_data` has been validated and contains email, password
-    user = auth.authenticate_user(db, email=user_data.email, password=user_data.password)
+    user = auth.authenticate_user(db, email=user_data.email, password=user_data.password, background_tasks=background_tasks)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    # if user and not user.is_verified:
+    #     raise HTTPException(status_code=401, detail="Please verify your account")
 
     # Generate access and refresh tokens
     access_token = auth.create_access_token({"sub": user.id})
@@ -91,14 +97,14 @@ def login(user_data: UserLogin, response: Response, request: Request, db: Sessio
 
 @router.post("/forgot-password")
 def forgot(background_tasks: BackgroundTasks, data: PasswordResetRequest, db: Session = Depends(get_db)):
-    token = auth.generate_reset_token_code(db, data.email, background_tasks)
+    token = auth.generate_otp_code(db, data.email, OTPEnum.FORGOT, background_tasks)
   
     print(f"Reset link: https://yourapp.com/reset-password?token={token}")
     return {"message": "Reset link sent"}
 
-@router.post("/verify-code")
+@router.post("/verify-otp")
 def verify(data: PasswordVerifyConfirm, db: Session = Depends(get_db)):
-    auth.verify_code(db, data.token, data.email)
+    auth.verify_code(db, data.token, data.email, data.token_type)
     return {"message": "Code verified successfully"}
 
 @router.post("/reset-password")

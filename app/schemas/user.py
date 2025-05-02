@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from app.utils.enums import OTPEnum
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -41,3 +42,4 @@ class PasswordResetConfirm(BaseModel):
 class PasswordVerifyConfirm(BaseModel):
     token: str
     email: str
+    token_type: OTPEnum

@@ -14,6 +14,7 @@
 - 🐘 PostgreSQL
 - 🔐 JWT (Access & Refresh Tokens)
 - 🔑 Google OAuth2 Sign-In
+- 📧 FastAPI-Mail (Email OTP for Signup, Login, Forgot Password)
 - 🔄 Alembic (Database Migrations)
 - 🐍 Python venv environment
 
@@ -24,7 +25,7 @@
 ### ✅ Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/fastapi_auth_boilerplate.git
+git clone https://github.com/jami-raza/fastapi_auth_boilerplate.git
 cd fastapi_auth_boilerplate
 
 # Create virtual environment
