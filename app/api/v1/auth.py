@@ -117,14 +117,20 @@ def get_profile(current_user: dict = Depends(get_current_user)):
     return {"user": current_user}
 
 @router.post("/refresh")
-def refresh_token(request: Request, response: Response, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
     refresh_token = request.cookies.get("refresh_token")
     print(refresh_token, "refresh token")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Missing refresh token")
-    print(type(current_user), "current_user")
-    print(current_user, "current_user")
-    return device.refresh_tokens(db, current_user["user_id"])
+    # print(type(current_user), "current_user")
+    # print(current_user, "current_user")
+    # Set tokens in cookies
+    
+    token = device.refresh_tokens(db, refresh_token)
+    print(token, "token")
+    response.set_cookie("access_token", token["access_token"], httponly=True, max_age=1800, secure=True, samesite="lax")
+    response.set_cookie("refresh_token", token["refresh_token"], httponly=True, max_age=86400, secure=True, samesite="lax")
+    return {"message": "Token refreshed successfully"}
 
 # Logout route
 @router.post("/logout")

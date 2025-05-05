@@ -97,7 +97,10 @@ def create_or_update_device(db: Session, user_id: str, device_info: dict, refres
     db.commit()
 
 # Refresh tokens for the user
-def refresh_tokens(db: Session, user_id: str):
+def refresh_tokens(db: Session, refresh_token:str):
+    
+    user_id = verify_refresh_token(refresh_token)
+    
     # Generate new access and refresh tokens
     access_token = create_access_token({"sub": user_id})
     refresh_token = create_refresh_token({"sub": user_id})
